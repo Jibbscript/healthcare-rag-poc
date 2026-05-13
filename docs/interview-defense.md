@@ -1,4 +1,4 @@
-# Interview defense crib sheet
+# Key tech decisions crib sheet
 
 - Chunking: deterministic section/page-aware chunks with char offsets and checksums.
 - Retrieval: BM25 plus optional vector fusion; smoke uses S3 in-memory artifact to avoid fixed managed-vector spend.
