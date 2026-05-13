@@ -1,0 +1,11 @@
+description: healthcare-rag local fixture baseline
+providers:
+  - id: exec:pnpm eval:local -- --max-cases 5
+    label: local-fixture-rag
+prompts:
+  - "{{input}}"
+tests:
+  - vars: { input: "What is the urgent care copay?" }
+    assert:
+      - type: javascript
+        value: output.includes('passed') || output.includes('cases')

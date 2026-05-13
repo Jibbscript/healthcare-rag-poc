@@ -1,0 +1,46 @@
+services:
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports: ["9000:9000", "9001:9001"]
+    volumes: ["minio-data:/data"]
+    healthcheck: { test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"], interval: 10s, timeout: 3s, retries: 10 }
+  dynamodb-local:
+    image: amazon/dynamodb-local:2.5.4
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /home/dynamodblocal/data"
+    ports: ["8000:8000"]
+    volumes: ["ddb-data:/home/dynamodblocal/data"]
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment: { POSTGRES_PASSWORD: postgres, POSTGRES_DB: benefits }
+    ports: ["5432:5432"]
+    volumes: ["pg-data:/var/lib/postgresql/data"]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U postgres"], interval: 10s, timeout: 3s, retries: 10 }
+  qdrant:
+    image: qdrant/qdrant:v1.14.0
+    ports: ["6333:6333", "6334:6334"]
+    volumes: ["qdrant-data:/qdrant/storage"]
+    healthcheck: { test: ["CMD", "bash", "-lc", "</dev/tcp/127.0.0.1/6333"], interval: 10s, timeout: 3s, retries: 10 }
+  ollama:
+    image: ollama/ollama:0.6.8
+    ports: ["11434:11434"]
+    volumes: ["ollama-data:/root/.ollama"]
+  presidio-analyzer:
+    image: mcr.microsoft.com/presidio-analyzer:latest
+    ports: ["5002:3000"]
+  presidio-anonymizer:
+    image: mcr.microsoft.com/presidio-anonymizer:latest
+    ports: ["5001:3000"]
+  localstack:
+    image: localstack/localstack:4.3
+    profiles: ["optional"]
+    ports: ["4566:4566"]
+volumes:
+  minio-data: {}
+  ddb-data: {}
+  pg-data: {}
+  qdrant-data: {}
+  ollama-data: {}

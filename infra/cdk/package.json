@@ -1,0 +1,11 @@
+{
+  "name": "@healthcare-rag/infra",
+  "version": "0.1.0",
+  "private": true,
+  "main": "bin/app.ts",
+  "types": "bin/app.ts",
+  "dependencies": {
+    "@healthcare-rag/core": "workspace:*"
+  },
+  "type": "module"
+}

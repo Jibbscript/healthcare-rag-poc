@@ -1,0 +1,1 @@
+export { synthTemplate } from '../template';

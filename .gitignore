@@ -1,0 +1,10 @@
+.DS_Store
+node_modules/
+cdk.out/
+evals/reports/*
+!evals/reports/.gitkeep
+.env
+.env.*
+!.env.example
+!deploy/.env.local.example
+*.log

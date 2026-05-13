@@ -1,0 +1,46 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": [
+      "ES2022"
+    ],
+    "strict": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": [
+      "node",
+      "vitest"
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@healthcare-rag/core": [
+        "packages/core/src/index.ts"
+      ],
+      "@healthcare-rag/adapters-local": [
+        "packages/adapters-local/src/index.ts"
+      ],
+      "@healthcare-rag/adapters-aws": [
+        "packages/adapters-aws/src/index.ts"
+      ],
+      "@healthcare-rag/test-fixtures": [
+        "packages/test-fixtures/src/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "apps/**/*.ts",
+    "packages/**/*.ts",
+    "infra/**/*.ts",
+    "scripts/**/*.ts",
+    "vitest.config.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "cdk.out",
+    "evals/reports"
+  ]
+}

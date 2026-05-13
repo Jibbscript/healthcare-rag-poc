@@ -1,0 +1,14 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  ChatFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs22.x
+      Handler: apps/api/src/handlers/chat.handler
+      Events:
+        Chat:
+          Type: HttpApi
+          Properties:
+            Path: /chat
+            Method: POST

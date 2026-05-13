@@ -1,0 +1,17 @@
+documents:
+  - docId: wellmark-ppo-2026
+    planId: wellmark-ppo
+    title: Wellmark PPO Demo Benefits 2026
+    year: 2026
+    sourceLabel: Public demo SBC
+    sourceUri: corpus/fixtures/wellmark-ppo-2026.md
+    path: fixtures/wellmark-ppo-2026.md
+    allowedDemoUse: Public synthetic demo benefits text; no PHI.
+  - docId: wellmark-hdhp-2026
+    planId: wellmark-hdhp
+    title: Wellmark HDHP Demo Benefits 2026
+    year: 2026
+    sourceLabel: Public demo benefits guide
+    sourceUri: corpus/fixtures/wellmark-hdhp-2026.md
+    path: fixtures/wellmark-hdhp-2026.md
+    allowedDemoUse: Public synthetic demo benefits text; no PHI.

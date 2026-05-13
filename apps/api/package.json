@@ -1,0 +1,13 @@
+{
+  "name": "@healthcare-rag/api",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "@healthcare-rag/core": "workspace:*",
+    "@healthcare-rag/adapters-local": "workspace:*",
+    "@healthcare-rag/adapters-aws": "workspace:*"
+  },
+  "type": "module"
+}

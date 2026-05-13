@@ -1,0 +1,55 @@
+import { assertSmokeFlags, type InfraFlags, type InfraProfile } from './config/profiles';
+import { withTags } from './tags';
+
+type Resource = { Type: string; Properties?: Record<string, unknown>; DependsOn?: string | string[] };
+export type Template = { AWSTemplateFormatVersion: string; Description: string; Resources: Record<string, Resource>; Outputs: Record<string, unknown> };
+
+export function synthTemplate(profile: InfraProfile, flags: InfraFlags): Template {
+  if (profile === 'aws-smoke') assertSmokeFlags(flags);
+  const resources: Record<string, Resource> = {
+    DemoKey: { Type: 'AWS::KMS::Key', Properties: withTags({ EnableKeyRotation: true, PendingWindowInDays: 7, Description: 'Single demo CMK for corpus bucket and audit table' }, profile) },
+    DemoKeyAlias: { Type: 'AWS::KMS::Alias', Properties: { AliasName: `alias/healthcare-rag-${profile}`, TargetKeyId: { Ref: 'DemoKey' } } },
+    CorpusBucket: { Type: 'AWS::S3::Bucket', Properties: withTags({ PublicAccessBlockConfiguration: { BlockPublicAcls: true, BlockPublicPolicy: true, IgnorePublicAcls: true, RestrictPublicBuckets: true }, BucketEncryption: { ServerSideEncryptionConfiguration: [{ ServerSideEncryptionByDefault: { SSEAlgorithm: 'aws:kms', KMSMasterKeyID: { Ref: 'DemoKey' } } }] }, VersioningConfiguration: { Status: 'Suspended' }, LifecycleConfiguration: { Rules: [{ Id: 'DemoCleanup', Status: 'Enabled', ExpirationInDays: 14, Prefix: 'eval/' }] } }, profile) },
+    CorpusBucketPolicy: { Type: 'AWS::S3::BucketPolicy', Properties: { Bucket: { Ref: 'CorpusBucket' }, PolicyDocument: { Statement: [{ Sid: 'DenyInsecureTransport', Effect: 'Deny', Principal: '*', Action: 's3:*', Resource: [{ 'Fn::Sub': '${CorpusBucket.Arn}' }, { 'Fn::Sub': '${CorpusBucket.Arn}/*' }], Condition: { Bool: { 'aws:SecureTransport': 'false' } } }] } } },
+    AuditTable: { Type: 'AWS::DynamoDB::Table', Properties: withTags({ BillingMode: 'PAY_PER_REQUEST', AttributeDefinitions: [{ AttributeName: 'pk', AttributeType: 'S' }, { AttributeName: 'sk', AttributeType: 'S' }, { AttributeName: 'gsi1pk', AttributeType: 'S' }, { AttributeName: 'gsi1sk', AttributeType: 'S' }], KeySchema: [{ AttributeName: 'pk', KeyType: 'HASH' }, { AttributeName: 'sk', KeyType: 'RANGE' }], GlobalSecondaryIndexes: [{ IndexName: 'gsi1', KeySchema: [{ AttributeName: 'gsi1pk', KeyType: 'HASH' }, { AttributeName: 'gsi1sk', KeyType: 'RANGE' }], Projection: { ProjectionType: 'ALL' } }], TimeToLiveSpecification: { AttributeName: 'ttl', Enabled: true }, SSESpecification: { SSEEnabled: true, SSEType: 'KMS', KMSMasterKeyId: { Ref: 'DemoKey' } }, PointInTimeRecoverySpecification: { PointInTimeRecoveryEnabled: profile === 'aws-full' } }, profile) },
+    EventBus: { Type: 'AWS::Events::EventBus', Properties: { Name: `healthcare-rag-${profile}-events` } },
+    EvalRequestedRule: { Type: 'AWS::Events::Rule', Properties: { EventBusName: { Ref: 'EventBus' }, EventPattern: { source: ['healthcare-rag.manual'], 'detail-type': ['eval.run.requested'] }, State: 'ENABLED' } },
+    IngestRequestedRule: { Type: 'AWS::Events::Rule', Properties: { EventBusName: { Ref: 'EventBus' }, EventPattern: { 'detail-type': ['corpus.ingest.requested'] }, State: 'ENABLED' } },
+    SmokeVpc: { Type: 'AWS::EC2::VPC', Properties: withTags({ CidrBlock: '10.42.0.0/16', EnableDnsHostnames: true, EnableDnsSupport: true }, profile) },
+    IsolatedSubnetA: { Type: 'AWS::EC2::Subnet', Properties: withTags({ VpcId: { Ref: 'SmokeVpc' }, CidrBlock: '10.42.1.0/24', AvailabilityZone: { 'Fn::Select': [0, { 'Fn::GetAZs': '' }] }, MapPublicIpOnLaunch: false }, profile) },
+    IsolatedRouteTable: { Type: 'AWS::EC2::RouteTable', Properties: withTags({ VpcId: { Ref: 'SmokeVpc' } }, profile) },
+    SubnetRouteTableAssoc: { Type: 'AWS::EC2::SubnetRouteTableAssociation', Properties: { RouteTableId: { Ref: 'IsolatedRouteTable' }, SubnetId: { Ref: 'IsolatedSubnetA' } } },
+    LambdaSecurityGroup: { Type: 'AWS::EC2::SecurityGroup', Properties: { GroupDescription: 'Chat lambda egress to VPC endpoints only', VpcId: { Ref: 'SmokeVpc' }, SecurityGroupEgress: [{ IpProtocol: 'tcp', FromPort: 443, ToPort: 443, CidrIp: '10.42.0.0/16' }] } },
+    EndpointSecurityGroup: { Type: 'AWS::EC2::SecurityGroup', Properties: { GroupDescription: 'Bedrock runtime VPCE ingress from lambda', VpcId: { Ref: 'SmokeVpc' }, SecurityGroupIngress: [{ IpProtocol: 'tcp', FromPort: 443, ToPort: 443, SourceSecurityGroupId: { Ref: 'LambdaSecurityGroup' } }] } },
+    S3GatewayEndpoint: { Type: 'AWS::EC2::VPCEndpoint', Properties: { VpcEndpointType: 'Gateway', VpcId: { Ref: 'SmokeVpc' }, RouteTableIds: [{ Ref: 'IsolatedRouteTable' }], ServiceName: { 'Fn::Sub': 'com.amazonaws.${AWS::Region}.s3' } } },
+    DynamoDbGatewayEndpoint: { Type: 'AWS::EC2::VPCEndpoint', Properties: { VpcEndpointType: 'Gateway', VpcId: { Ref: 'SmokeVpc' }, RouteTableIds: [{ Ref: 'IsolatedRouteTable' }], ServiceName: { 'Fn::Sub': 'com.amazonaws.${AWS::Region}.dynamodb' } } },
+    BedrockRuntimeEndpoint: { Type: 'AWS::EC2::VPCEndpoint', Properties: { VpcEndpointType: 'Interface', VpcId: { Ref: 'SmokeVpc' }, SubnetIds: [{ Ref: 'IsolatedSubnetA' }], PrivateDnsEnabled: true, SecurityGroupIds: [{ Ref: 'EndpointSecurityGroup' }], ServiceName: { 'Fn::Sub': 'com.amazonaws.${AWS::Region}.bedrock-runtime' }, PolicyDocument: { Statement: [{ Effect: 'Allow', Principal: '*', Action: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'], Resource: '*' }] } } },
+    ChatLambdaRole: { Type: 'AWS::IAM::Role', Properties: { AssumeRolePolicyDocument: { Statement: [{ Effect: 'Allow', Principal: { Service: 'lambda.amazonaws.com' }, Action: 'sts:AssumeRole' }] }, PermissionsBoundary: flags.permissionsBoundaryArn, Policies: [{ PolicyName: 'chat-least-privilege', PolicyDocument: { Statement: [{ Effect: 'Allow', Action: ['s3:GetObject', 's3:ListBucket'], Resource: [{ 'Fn::Sub': '${CorpusBucket.Arn}' }, { 'Fn::Sub': '${CorpusBucket.Arn}/index/*' }, { 'Fn::Sub': '${CorpusBucket.Arn}/corpus/*' }] }, { Effect: 'Allow', Action: ['dynamodb:PutItem', 'dynamodb:GetItem', 'dynamodb:Query', 'dynamodb:UpdateItem'], Resource: [{ 'Fn::GetAtt': ['AuditTable', 'Arn'] }, { 'Fn::Sub': '${AuditTable.Arn}/index/*' }] }, { Effect: 'Allow', Action: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'], Resource: '*' }, { Effect: 'Allow', Action: ['logs:CreateLogStream', 'logs:PutLogEvents'], Resource: '*' }, { Effect: 'Allow', Action: ['ec2:CreateNetworkInterface', 'ec2:DescribeNetworkInterfaces', 'ec2:DeleteNetworkInterface'], Resource: '*' }] } }] } },
+    ChatLogGroup: { Type: 'AWS::Logs::LogGroup', Properties: { LogGroupName: '/aws/lambda/healthcare-rag-chat-smoke', RetentionInDays: 7 } },
+    ChatFunction: { Type: 'AWS::Lambda::Function', DependsOn: 'ChatLogGroup', Properties: { Runtime: 'nodejs22.x', Handler: 'index.handler', Role: { 'Fn::GetAtt': ['ChatLambdaRole', 'Arn'] }, Timeout: 20, MemorySize: 1024, VpcConfig: { SecurityGroupIds: [{ Ref: 'LambdaSecurityGroup' }], SubnetIds: [{ Ref: 'IsolatedSubnetA' }] }, Environment: { Variables: { PROFILE: profile, AUDIT_TABLE: { Ref: 'AuditTable' }, INDEX_BUCKET: { Ref: 'CorpusBucket' }, INDEX_KEY: 'index/index-artifact.json.gz' } }, Code: { ZipFile: 'exports.handler = async () => ({ statusCode: 200, body: JSON.stringify({ ok: true }) });' } } },
+    HttpApi: { Type: 'AWS::ApiGatewayV2::Api', Properties: { Name: `healthcare-rag-${profile}`, ProtocolType: 'HTTP', CorsConfiguration: { AllowOrigins: ['http://localhost:3000', 'http://127.0.0.1:8787'], AllowMethods: ['POST'], AllowHeaders: ['content-type'] } } },
+    ChatIntegration: { Type: 'AWS::ApiGatewayV2::Integration', Properties: { ApiId: { Ref: 'HttpApi' }, IntegrationType: 'AWS_PROXY', IntegrationUri: { 'Fn::GetAtt': ['ChatFunction', 'Arn'] }, PayloadFormatVersion: '2.0' } },
+    ChatRoute: { Type: 'AWS::ApiGatewayV2::Route', Properties: { ApiId: { Ref: 'HttpApi' }, RouteKey: 'POST /chat', Target: { 'Fn::Sub': 'integrations/${ChatIntegration}' } } },
+    ApiStage: { Type: 'AWS::ApiGatewayV2::Stage', Properties: { ApiId: { Ref: 'HttpApi' }, StageName: '$default', AutoDeploy: true } },
+    ApiInvokePermission: { Type: 'AWS::Lambda::Permission', Properties: { Action: 'lambda:InvokeFunction', FunctionName: { Ref: 'ChatFunction' }, Principal: 'apigateway.amazonaws.com' } }
+  };
+  if (profile === 'aws-full') addFullResources(resources, flags, profile);
+  return { AWSTemplateFormatVersion: '2010-09-09', Description: `Healthcare RAG ${profile} stack. Cheap-by-default smoke excludes managed vector db, NAT, Fargate, Aurora, Bedrock KB, and multi-AZ endpoints.`, Resources: resources, Outputs: outputs(profile) };
+}
+
+function addFullResources(resources: Record<string, Resource>, flags: InfraFlags, profile: string): void {
+  if (flags.enableOpenSearch) resources.ProdOpenSearchVectorCollection = { Type: 'AWS::OpenSearchServerless::Collection', Properties: withTags({ Name: 'healthcare-rag-vector', Type: 'VECTORSEARCH', Description: 'Disabled by default due fixed cost floor.' }, profile) };
+  if (flags.enableAuroraPgvector) resources.ProdAuroraPgvectorCluster = { Type: 'AWS::RDS::DBCluster', Properties: withTags({ Engine: 'aurora-postgresql', EngineMode: 'provisioned', DatabaseName: 'benefits', ServerlessV2ScalingConfiguration: { MinCapacity: 0.5, MaxCapacity: 2 } }, profile) };
+  if (flags.enableFargateReranker) resources.ProdFargateRerankerService = { Type: 'AWS::ECS::Service', Properties: withTags({ DesiredCount: 0, LaunchType: 'FARGATE' }, profile) };
+  if (flags.enableBedrockKb) resources.ProdBedrockKnowledgeBase = { Type: 'AWS::Bedrock::KnowledgeBase', Properties: { Name: 'healthcare-rag-kb-disabled-by-default', RoleArn: 'arn:aws:iam::123456789012:role/placeholder', KnowledgeBaseConfiguration: { Type: 'VECTOR', VectorKnowledgeBaseConfiguration: { EmbeddingModelArn: 'arn:aws:bedrock:us-east-1::foundation-model/placeholder' } }, StorageConfiguration: { Type: 'S3_VECTORS', S3VectorsConfiguration: { VectorBucketArn: 'arn:aws:s3:::placeholder' } } } };
+  if (flags.enableMultiAzEndpoints) resources.ProdSecondIsolatedSubnet = { Type: 'AWS::EC2::Subnet', Properties: withTags({ VpcId: { Ref: 'SmokeVpc' }, CidrBlock: '10.42.2.0/24', AvailabilityZone: { 'Fn::Select': [1, { 'Fn::GetAZs': '' }] }, MapPublicIpOnLaunch: false }, profile) };
+}
+function outputs(profile: string): Record<string, unknown> {
+  return {
+    ApiUrl: { Value: { 'Fn::Sub': 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com' } },
+    BucketName: { Value: { Ref: 'CorpusBucket' } },
+    AuditTableName: { Value: { Ref: 'AuditTable' } },
+    BedrockRuntimeVpcEndpointId: { Value: { Ref: 'BedrockRuntimeEndpoint' } },
+    CostReminder: { Value: `${profile} includes one paid bedrock-runtime endpoint in smoke; destroy after demo.` }
+  };
+}
