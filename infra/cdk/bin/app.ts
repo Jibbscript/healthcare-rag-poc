@@ -11,5 +11,6 @@ const template = synthTemplate(profile, flagsFromArgv(argv, profile));
 await mkdir(outDir, { recursive: true });
 const name = profile === 'aws-smoke' ? 'HealthcareRagAwsSmoke.template.json' : 'HealthcareRagAwsFull.template.json';
 await writeFile(join(outDir, name), JSON.stringify(template, null, 2));
-await writeFile(join(outDir, 'manifest.json'), JSON.stringify({ version: 'healthcare-rag-poc-synth', profile, stacks: [name] }, null, 2));
+// manifest version must be a valid semver string; avoid non-semver identifiers that break downstream tooling
+await writeFile(join(outDir, 'manifest.json'), JSON.stringify({ version: '0.0.0-synth', profile, stacks: [name] }, null, 2));
 process.stdout.write(`synthesized ${join(outDir, name)}\n`);
