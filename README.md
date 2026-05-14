@@ -62,4 +62,4 @@ scripts/destroy-smoke.sh --dry-run
 - Evaluation cases and reports: `evals/`
 - Architecture dossier and runbooks: `docs/`
 
-See `docs/runbooks/final-verification.md` and `docs/interview-defense.md` for the complete checklist and defense notes.
+See `docs/runbooks/final-verification.md` and `docs/key-tech-decisions.md` for the complete checklist and defense notes.
