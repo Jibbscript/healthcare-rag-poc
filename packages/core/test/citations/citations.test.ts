@@ -10,4 +10,9 @@ describe('citations', () => {
     expect(citations[0].rendered).toContain('Wellmark');
     expect(checkCitationCoverage('Urgent care is covered with a copay.', citations).passed).toBe(true);
   });
+
+  it('allows refusal answers without fabricated citations', () => {
+    const coverage = checkCitationCoverage('I don’t have enough evidence in the provided public benefits documents to answer that.', []);
+    expect(coverage).toMatchObject({ passed: true });
+  });
 });

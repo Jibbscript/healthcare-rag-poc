@@ -7,7 +7,7 @@
 5. For real deploy, set `AWS_REGION`, then set `CONFIRM_AWS_SMOKE_DEPLOY=deploy-smoke` and run `scripts/deploy-smoke.sh`. The script deploys the synthesized CloudFormation template with `aws cloudformation deploy`; it does not call `cdk deploy` because this repo writes deterministic templates rather than a CDK cloud assembly.
 6. Upload `evals/reports/index-artifact.json.gz` to the index prefix.
 7. Call `POST /chat` with a public demo question.
-8. Trigger max-25 smoke eval with `pnpm tsx scripts/trigger-smoke-eval.ts 25`.
+8. Trigger a bounded smoke eval with `pnpm tsx scripts/trigger-smoke-eval.ts 25`. The trigger rejects `maxCases` outside integer `1..25` and `EVAL_BUDGET_USD` outside `>0..5` before sending EventBridge events.
 9. Inspect DynamoDB audit records and CloudWatch EMF logs.
 10. Destroy: set `AWS_REGION`, then run `CONFIRM_AWS_SMOKE_DESTROY=destroy-smoke scripts/destroy-smoke.sh`.
 

@@ -6,4 +6,3 @@ export * from './llm/fixture';
 export * from './object-store/minio';
 export * from './pgvector/catalog';
 export * from './qdrant/qdrant';
-export * from './tools/fixture-tool';

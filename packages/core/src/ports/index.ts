@@ -1,4 +1,4 @@
-import type { AuditTrace, BenefitLookup, Chunk, EvalResult, GuardrailDecision, Profile, RetrievedChunk, RetrievalQuery } from '../domain';
+import type { AuditTrace, BenefitLookup, EvalResult, GuardrailDecision, Profile, RetrievedChunk, RetrievalQuery } from '../domain';
 
 export type ObjectInfo = { key: string; size: number; checksum?: string; updatedAt?: string };
 export interface ObjectStore {

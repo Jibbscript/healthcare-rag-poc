@@ -23,6 +23,6 @@ export function flagsFromArgv(argv: string[], profile: InfraProfile): InfraFlags
   };
 }
 export function assertSmokeFlags(flags: InfraFlags): void {
-  const forbidden = Object.entries(flags).filter(([key, value]) => key.startsWith('enable') && key !== 'enableBedrockRuntimeEndpoint' && value === true);
+  const forbidden = Object.entries(flags).filter(([key, value]) => key.startsWith('enable') && value === true);
   if (forbidden.length) throw new Error(`aws-smoke forbidden flags enabled: ${forbidden.map(([k]) => k).join(',')}`);
 }

@@ -4,7 +4,7 @@ import { Bm25Index } from './bm25';
 
 export class HybridRetriever implements Retriever {
   private readonly bm25: Bm25Index;
-  constructor(private readonly chunks: Chunk[], private readonly vectorRetriever?: Retriever) {
+  constructor(chunks: Chunk[], private readonly vectorRetriever?: Retriever) {
     this.bm25 = new Bm25Index(chunks);
   }
 
@@ -12,8 +12,7 @@ export class HybridRetriever implements Retriever {
     const topK = query.topK ?? 5;
     const lexical = this.bm25.search(query.query, topK * 2);
     const semantic = this.vectorRetriever ? await this.vectorRetriever.retrieve({ ...query, topK: topK * 2 }) : [];
-    const fused = reciprocalRankFusion([lexical, semantic], topK);
-    return fused;
+    return reciprocalRankFusion([lexical, semantic], topK);
   }
 }
 

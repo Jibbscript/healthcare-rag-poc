@@ -1,6 +1,7 @@
 import type { AuditTrace, Citation, EvalCase, EvalResult } from '../../domain';
 import type { ChatResponse } from '../../api';
 import { checkCitationCoverage } from '../../citations';
+import { isRefusalAnswer } from '../../policy/refusal';
 import { looksLikeRawPii } from '../../utils/redact';
 import { sha256 } from '../../utils/hash';
 
@@ -25,7 +26,7 @@ export function groundednessProxy(answer: string, citations: Citation[]): Score 
 }
 export function citationCoverage(answer: string, citations: Citation[], expectedIds: string[]): Score {
   const hasExpected = expectedIds.length === 0 || expectedIds.some((id) => citations.some((citation) => citation.chunkId.includes(id) || citation.docId === id));
-  const isRefusal = /^(I can[’']?t|I don[’']?t have enough|I do not have enough)/i.test(answer);
+  const isRefusal = isRefusalAnswer(answer);
   return { scorer: 'citation_coverage', passed: isRefusal || (citations.length > 0 && hasExpected), score: isRefusal || (citations.length > 0 && hasExpected) ? 1 : 0, rationale: `${citations.length} citation(s), expected=${expectedIds.join(',') || 'none'}.`, evidenceIds: citations.map((c) => c.chunkId) };
 }
 export function refusalCorrectness(testCase: EvalCase, response: ChatResponse): Score {

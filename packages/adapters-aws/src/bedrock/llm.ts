@@ -3,8 +3,8 @@ import { estimateTokens, type Llm, type LlmMessage, type RetrievedChunk } from '
 
 export class BedrockLlmAdapter implements Llm {
   private readonly client: BedrockRuntimeClient;
-  constructor(private readonly config: { region: string; modelId: string; timeoutMs?: number; guardrailIdentifier?: string; guardrailVersion?: string }) {
-    this.client = new BedrockRuntimeClient({ region: config.region, requestHandler: undefined });
+  constructor(private readonly config: { region: string; modelId: string; guardrailIdentifier?: string; guardrailVersion?: string }) {
+    this.client = new BedrockRuntimeClient({ region: config.region });
   }
   async generate(input: { messages: LlmMessage[]; contextChunks: RetrievedChunk[] }): Promise<{ text: string; modelId: string; provider: string; estimatedInputTokens?: number; estimatedOutputTokens?: number }> {
     const prompt = input.messages.map((message) => `${message.role}: ${message.content}`).join('\n');

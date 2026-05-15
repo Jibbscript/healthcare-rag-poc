@@ -11,5 +11,8 @@ if [[ "${DRY_RUN}" == "true" ]]; then
 fi
 scripts/deploy-smoke.sh
 aws s3 cp evals/reports/index-artifact.json.gz "s3://${INDEX_BUCKET:?}/index/index-artifact.json.gz"
-curl -s "${API_URL:?}/chat" -H 'content-type: application/json' -d '{"sessionId":"aws-smoke","message":"What is the urgent care copay?","profile":"aws-smoke"}'
+curl -s "${API_URL:?}/chat" \
+  -H 'content-type: application/json' \
+  -d '{"sessionId":"aws-smoke","message":"What is the urgent care copay?","profile":"aws-smoke"}' \
+  | node -e "let body=''; process.stdin.on('data', (chunk) => { body += chunk; }); process.stdin.on('end', () => { const crypto = require('node:crypto'); const response = JSON.parse(body); const answerHash = crypto.createHash('sha256').update(String(response.answer ?? '')).digest('hex'); const citations = Array.isArray(response.citations) ? response.citations.map((citation) => citation.citationId ?? citation.chunkId).filter(Boolean) : []; process.stdout.write(JSON.stringify({ traceId: response.traceId, answerHash, citations }, null, 2) + '\n'); });"
 pnpm tsx scripts/trigger-smoke-eval.ts 25

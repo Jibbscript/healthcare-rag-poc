@@ -1,4 +1,5 @@
 import type { Citation, RetrievedChunk } from '../domain';
+import { isRefusalAnswer } from '../policy/refusal';
 
 export function renderCitation(chunk: RetrievedChunk, index: number): Citation {
   const location = chunk.page ? `p. ${chunk.page}` : chunk.section ? chunk.section : chunk.chunkId;
@@ -25,7 +26,7 @@ export function assembleCitations(chunks: RetrievedChunk[]): Citation[] {
 }
 
 export function checkCitationCoverage(answer: string, citations: Citation[]): { passed: boolean; rationale: string } {
-  if (/^(I can[’']?t|I don[’']?t have enough|I do not have enough)|not enough evidence/i.test(answer)) return { passed: true, rationale: 'Refusal answers do not require fabricated citations.' };
+  if (isRefusalAnswer(answer)) return { passed: true, rationale: 'Refusal answers do not require fabricated citations.' };
   if (citations.length === 0) return { passed: false, rationale: 'Non-refusal answer has no citations.' };
   const materialClaims = answer.split(/[.!?]\s+/).filter((sentence) => /(covered|copay|deductible|coinsurance|benefit|in-network|out-of-network)/i.test(sentence));
   return { passed: materialClaims.length === 0 || citations.length > 0, rationale: `${materialClaims.length} material claims mapped to ${citations.length} citation(s).` };

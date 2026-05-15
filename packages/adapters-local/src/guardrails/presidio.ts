@@ -1,7 +1,7 @@
 import { RegexGuardrail, type GuardrailDecision } from '@healthcare-rag/core';
 
 export class LocalPresidioGuardrail extends RegexGuardrail {
-  constructor(private readonly config?: { analyzerUrl?: string; anonymizerUrl?: string }) { super(); }
+  constructor(private readonly config?: { analyzerUrl?: string }) { super(); }
   override async evaluateInput(text: string): Promise<GuardrailDecision> {
     if (!this.config?.analyzerUrl) return super.evaluateInput(text);
     try {

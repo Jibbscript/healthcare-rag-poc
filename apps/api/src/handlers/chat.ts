@@ -12,6 +12,7 @@ export async function handler(event: HttpApiEvent): Promise<HttpApiResponse> {
     const response = await runChatPipeline(body, providers);
     return { statusCode: 200, headers, body: JSON.stringify(response) };
   } catch (error) {
-    return { statusCode: String(error).includes('Invalid chat request') ? 400 : 500, headers, body: JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error', traceId: 'unavailable' }) };
+    const badRequest = error instanceof Error && error.message.startsWith('Invalid chat request');
+    return { statusCode: badRequest ? 400 : 500, headers, body: JSON.stringify({ error: badRequest && error instanceof Error ? error.message : 'Internal server error', traceId: 'unavailable' }) };
   }
 }

@@ -9,4 +9,11 @@ describe('chat handler integration', () => {
     const bad = await handler({ body: JSON.stringify({ sessionId: '', message: '' }) });
     expect(bad.statusCode).toBe(400);
   });
+
+  it('returns generic 500 errors without echoing raw request text', async () => {
+    const response = await handler({ body: JSON.stringify({ sessionId: 'api', message: 'member id ABC12345', profile: 'invalid-profile' }) });
+    expect(response.statusCode).toBe(500);
+    expect(JSON.parse(response.body)).toEqual({ error: 'Internal server error', traceId: 'unavailable' });
+    expect(response.body).not.toContain('ABC12345');
+  });
 });

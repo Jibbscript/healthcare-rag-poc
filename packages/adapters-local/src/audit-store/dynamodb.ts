@@ -1,5 +1,5 @@
 import { CreateTableCommand, DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { CoreError, type AuditStore, type AuditTrace } from '@healthcare-rag/core';
 
 export class LocalDynamoAuditStore implements AuditStore {

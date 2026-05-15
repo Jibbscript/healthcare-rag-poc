@@ -17,4 +17,11 @@ describe('smoke deployment scripts', () => {
     expect(destroy).not.toContain('cdk destroy');
     expect(destroy).not.toContain('npx cdk destroy');
   });
+
+  it('does not print raw chat answers during smoke runs', () => {
+    const smokeRun = readFileSync('scripts/aws-smoke-run.sh', 'utf8');
+    expect(smokeRun).toContain('answerHash');
+    expect(smokeRun).toContain('crypto.createHash');
+    expect(smokeRun).not.toContain('curl -s "${API_URL:?}/chat" -H');
+  });
 });
