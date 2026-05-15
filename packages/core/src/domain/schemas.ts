@@ -41,7 +41,7 @@ export type Chunk = z.infer<typeof chunkSchema>;
 
 export const retrievalQuerySchema = z.object({
   query: z.string().min(1),
-  profile: profileSchema.default('local'),
+  profile: profileSchema.default('aws-smoke'),
   topK: z.number().int().positive().max(50).default(5),
   filters: z.record(z.string(), z.string()).optional()
 });
@@ -68,7 +68,7 @@ export const citationSchema = z.object({
 export type Citation = z.infer<typeof citationSchema>;
 
 export const chatTurnSchema = z.object({
-  sessionId: z.string().min(1),
+  sessionHash: z.string().min(8),
   turnId: z.string().min(1),
   userHash: z.string().min(8),
   createdAt: z.string().datetime(),
@@ -87,7 +87,7 @@ export type GuardrailDecision = z.infer<typeof guardrailDecisionSchema>;
 
 export const auditTraceSchema = z.object({
   traceId: z.string().min(1),
-  sessionId: z.string().min(1),
+  sessionHash: z.string().min(8),
   turnId: z.string().min(1),
   profile: profileSchema,
   createdAt: z.string().datetime(),

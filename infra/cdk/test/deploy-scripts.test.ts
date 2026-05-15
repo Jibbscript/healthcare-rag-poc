@@ -5,6 +5,10 @@ describe('smoke deployment scripts', () => {
   it('deploys the synthesized CloudFormation template instead of invoking cdk deploy on a non-CDK assembly', () => {
     const deploy = readFileSync('scripts/deploy-smoke.sh', 'utf8');
     expect(deploy).toContain('aws cloudformation deploy');
+    expect(deploy).toContain('pnpm build:lambda-artifacts');
+    expect(deploy).toContain('aws s3 cp "${CHAT_ZIP}"');
+    expect(deploy).toContain('LambdaArtifactBucket=');
+    expect(deploy).toContain('SmokeApiKey=');
     expect(deploy).toContain('HealthcareRagAwsSmoke.template.json');
     expect(deploy).not.toContain('cdk deploy');
     expect(deploy).not.toContain('npx cdk deploy');
@@ -22,6 +26,12 @@ describe('smoke deployment scripts', () => {
     const smokeRun = readFileSync('scripts/aws-smoke-run.sh', 'utf8');
     expect(smokeRun).toContain('answerHash');
     expect(smokeRun).toContain('crypto.createHash');
+    expect(smokeRun).toContain('x-smoke-api-key');
     expect(smokeRun).not.toContain('curl -s "${API_URL:?}/chat" -H');
+  });
+
+  it('uses the synthesized smoke event bus by default for eval triggers', () => {
+    const trigger = readFileSync('scripts/trigger-smoke-eval.ts', 'utf8');
+    expect(trigger).toContain("env.EVENT_BUS_NAME ?? 'healthcare-rag-aws-smoke-events'");
   });
 });

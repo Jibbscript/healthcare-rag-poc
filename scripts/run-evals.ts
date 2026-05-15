@@ -7,8 +7,8 @@ import { runChatPipeline } from '@healthcare-rag/core';
 
 export async function main(argv = process.argv.slice(2)): Promise<void> {
   const args = parseArgs(argv);
-  const profile = String(args.profile ?? 'local') as Profile;
-  const outPath = String(args.out ?? 'evals/reports/local-eval.json');
+  const profile = String(args.profile ?? 'aws-smoke') as Profile;
+  const outPath = String(args.out ?? `evals/reports/${profile}-eval.json`);
   const maxCases = args['max-cases'] ? Number(args['max-cases']) : undefined;
   const tags = args.tags ? String(args.tags).split(',') : [];
   const cases = await loadCases('evals/cases/demo.yaml');
@@ -38,4 +38,9 @@ function parseArgs(argv: string[]): Record<string, string | boolean> {
   for (let i = 0; i < argv.length; i++) if (argv[i].startsWith('--')) out[argv[i].slice(2)] = argv[i + 1]?.startsWith('--') || argv[i + 1] === undefined ? true : argv[++i];
   return out;
 }
-if (import.meta.url === `file://${process.argv[1]}`) await main();
+if (process.argv[1]?.endsWith('run-evals.ts')) {
+  main().catch((error: unknown) => {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    process.exitCode = 1;
+  });
+}

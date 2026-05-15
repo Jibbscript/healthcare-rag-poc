@@ -19,6 +19,7 @@
     "docker:local": "docker compose -f deploy/docker-compose.local.yml config",
     "demo-local": "tsx scripts/demo-local.ts",
     "api-local": "tsx apps/api/src/local-server.ts",
+    "build:lambda-artifacts": "bash scripts/build-lambda-artifacts.sh",
     "build:local-index": "tsx scripts/build-local-index.ts",
     "build:index-artifact": "tsx scripts/build-index-artifact.ts",
     "smoke:cost-shape": "tsx scripts/check-smoke-cost-shape.ts cdk.out/smoke"

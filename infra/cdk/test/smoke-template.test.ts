@@ -12,6 +12,10 @@ describe('aws-smoke template', () => {
     expect(types).toContain('AWS::DynamoDB::Table');
     expect(types).toContain('AWS::Lambda::Function');
     expect(resources().ChatFunction.Properties?.Runtime).toBe('nodejs22.x');
+    expect(resources().ChatFunction.Properties?.Code).toEqual({ S3Bucket: { Ref: 'LambdaArtifactBucket' }, S3Key: { Ref: 'ChatLambdaArtifactKey' } });
+    expect(JSON.stringify(resources().ChatFunction.Properties)).not.toContain('ZipFile');
+    expect(JSON.stringify(resources().ChatFunction.Properties)).toContain('AWS_SMOKE_USE_REAL_ADAPTERS');
+    expect(resources().EvalFunction.Properties?.Code).toEqual({ S3Bucket: { Ref: 'LambdaArtifactBucket' }, S3Key: { Ref: 'EvalLambdaArtifactKey' } });
     expect(resources().ChatLogGroup.Properties?.RetentionInDays).toBe(7);
   });
   it('forbids expensive smoke resources and has one bedrock-runtime endpoint', () => {
@@ -31,5 +35,14 @@ describe('aws-smoke template', () => {
     expect(endpoints.filter((r) => r.Properties?.VpcEndpointType === 'Gateway')).toHaveLength(2);
     expect(JSON.stringify(endpoints)).toContain('.s3');
     expect(JSON.stringify(endpoints)).toContain('.dynamodb');
+  });
+  it('gates and throttles the smoke API before invoking Bedrock-backed chat', () => {
+    expect(resources().SmokeApiAuthorizer.Type).toBe('AWS::ApiGatewayV2::Authorizer');
+    expect(resources().ChatRoute.Properties).toMatchObject({ AuthorizationType: 'CUSTOM', AuthorizerId: { Ref: 'SmokeApiAuthorizer' } });
+    expect(resources().ApiStage.Properties?.DefaultRouteSettings).toMatchObject({ ThrottlingBurstLimit: 2, ThrottlingRateLimit: 1 });
+  });
+  it('wires EventBridge smoke eval events to the eval Lambda', () => {
+    expect(resources().EvalRequestedRule.Properties?.Targets).toEqual([{ Id: 'EvalRunner', Arn: { 'Fn::GetAtt': ['EvalFunction', 'Arn'] } }]);
+    expect(resources().EvalInvokePermission.Properties).toMatchObject({ FunctionName: { Ref: 'EvalFunction' }, Principal: 'events.amazonaws.com' });
   });
 });

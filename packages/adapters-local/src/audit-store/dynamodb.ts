@@ -1,6 +1,6 @@
 import { CreateTableCommand, DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
-import { CoreError, type AuditStore, type AuditTrace } from '@healthcare-rag/core';
+import { CoreError, sha256, type AuditStore, type AuditTrace } from '@healthcare-rag/core';
 
 export class LocalDynamoAuditStore implements AuditStore {
   private readonly doc: DynamoDBDocumentClient;
@@ -16,7 +16,7 @@ export class LocalDynamoAuditStore implements AuditStore {
     return out.Items?.[0]?.trace ?? null;
   }
   async querySession(sessionId: string): Promise<AuditTrace[]> {
-    const out = await this.doc.send(new QueryCommand({ TableName: this.config.tableName, KeyConditionExpression: 'pk = :pk', ExpressionAttributeValues: { ':pk': `SESSION#${sessionId}` } }));
+    const out = await this.doc.send(new QueryCommand({ TableName: this.config.tableName, KeyConditionExpression: 'pk = :pk', ExpressionAttributeValues: { ':pk': `SESSION#${sha256(sessionId)}` } }));
     return (out.Items ?? []).map((item) => item.trace as AuditTrace);
   }
 }
@@ -25,11 +25,14 @@ export class InMemoryAuditStore implements AuditStore {
   private readonly traces = new Map<string, AuditTrace>();
   async putTrace(trace: AuditTrace): Promise<void> { this.traces.set(trace.traceId, trace); }
   async getTrace(traceId: string): Promise<AuditTrace | null> { return this.traces.get(traceId) ?? null; }
-  async querySession(sessionId: string): Promise<AuditTrace[]> { return [...this.traces.values()].filter((trace) => trace.sessionId === sessionId); }
+  async querySession(sessionId: string): Promise<AuditTrace[]> {
+    const sessionHash = sha256(sessionId);
+    return [...this.traces.values()].filter((trace) => trace.sessionHash === sessionHash);
+  }
 }
 
 export function toItem(trace: AuditTrace): Record<string, unknown> {
-  return { pk: `SESSION#${trace.sessionId}`, sk: `TURN#${trace.turnId}`, gsi1pk: `TRACE#${trace.traceId}`, gsi1sk: trace.createdAt, ttl: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30, trace };
+  return { pk: `SESSION#${trace.sessionHash}`, sk: `TURN#${trace.turnId}`, gsi1pk: `TRACE#${trace.traceId}`, gsi1sk: trace.createdAt, ttl: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30, trace };
 }
 
 export async function bootstrapLocalAuditTable(config: { endpoint: string; region: string; tableName: string }): Promise<void> {

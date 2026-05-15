@@ -46,6 +46,13 @@ pnpm cdk:nag
 scripts/deploy-smoke.sh --dry-run
 ```
 
+Real smoke deploys require a pre-existing artifact bucket plus a demo API key:
+
+```bash
+export AWS_SMOKE_ARTIFACT_BUCKET=<existing-artifact-bucket>
+export SMOKE_API_KEY=<shared-demo-key-at-least-16-chars>
+```
+
 Destroy after any real smoke demo to avoid endpoint-hour charges:
 
 ```bash

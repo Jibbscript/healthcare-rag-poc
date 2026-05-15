@@ -17,13 +17,14 @@ export function assembleAuditTrace(input: {
   timingsMs?: Record<string, number>;
   status?: AuditTrace['status'];
 }): AuditTrace {
+  const sessionHash = sha256(input.sessionId);
   return {
     traceId: input.traceId,
-    sessionId: input.sessionId,
+    sessionHash,
     turnId: input.turnId,
     profile: input.profile,
     createdAt: input.createdAt,
-    userHash: sha256(input.sessionId).slice(0, 32),
+    userHash: sessionHash.slice(0, 32),
     input: {
       inputHash: sha256(input.userText),
       redactedText: input.userRedactedText ?? input.guardrail.redactedText,

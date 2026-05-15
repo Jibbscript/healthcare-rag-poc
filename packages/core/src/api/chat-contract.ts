@@ -5,7 +5,7 @@ export const chatRequestSchema = z.object({
   sessionId: z.string().min(1),
   message: z.string().min(1).max(4000),
   planScope: z.string().optional(),
-  profile: profileSchema.default('local'),
+  profile: profileSchema.default('aws-smoke'),
   debug: z.boolean().default(false),
   redactionMode: z.enum(['strict', 'standard']).default('strict')
 });

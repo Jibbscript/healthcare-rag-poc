@@ -9,7 +9,7 @@ describe('domain schemas', () => {
     if (parsed.ok) expect(parsed.value).toMatchObject({ docId: expect.any(String), charStart: expect.any(Number), checksum: expect.any(String), sourceUri: expect.any(String) });
   });
   it('audit trace shape forbids rawPrompt field', () => {
-    const base = { traceId: 'trace1', sessionId: 's1', turnId: 't1', profile: 'local', createdAt: new Date().toISOString(), userHash: 'abcdefghi', input: { inputHash: 'abcdefghi' }, retrieval: { queryHash: 'abcdefghi', chunks: [] }, model: {}, citations: [], refusal: { refused: false, labels: [] }, evalInline: [], timingsMs: {}, status: 'success' };
+    const base = { traceId: 'trace1', sessionHash: 'abcdefghi', turnId: 't1', profile: 'local', createdAt: new Date().toISOString(), userHash: 'abcdefghi', input: { inputHash: 'abcdefghi' }, retrieval: { queryHash: 'abcdefghi', chunks: [] }, model: {}, citations: [], refusal: { refused: false, labels: [] }, evalInline: [], timingsMs: {}, status: 'success' };
     expect(() => auditTraceSchema.parse({ ...base, rawPrompt: 'do not store' })).toThrow();
   });
 });

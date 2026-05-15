@@ -3,7 +3,7 @@ import { BedrockGuardrailAdapter, BedrockLlmAdapter, AwsDynamoAuditStore, AwsSmo
 import { FixtureEmbeddingProvider, FixtureLlm, InMemoryAuditStore } from '@healthcare-rag/adapters-local';
 import { fixtureBenefitRows, fixtureChunks } from '@healthcare-rag/test-fixtures';
 
-export async function createProviderBundle(profile: Profile = 'local'): Promise<ProviderBundle> {
+export async function createProviderBundle(profile: Profile = 'aws-smoke'): Promise<ProviderBundle> {
   const config = getProfileConfig(profile);
   const clock = new SystemClock();
   const idGenerator = new RandomIdGenerator();
