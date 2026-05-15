@@ -4,6 +4,7 @@ import path from 'node:path';
 export default defineConfig({
   test: {
     include: ['packages/**/*.test.ts', 'apps/**/*.test.ts', 'infra/**/*.test.ts'],
+    exclude: ['**/node_modules/**', 'apps/web/src/components/**/*.test.ts'],
     environment: 'node',
     testTimeout: 30000,
     pool: 'threads',

@@ -7,6 +7,8 @@ pnpm install --frozen-lockfile
 pnpm lint && pnpm typecheck && pnpm test
 pnpm eval:local
 pnpm demo-local
+pnpm api-local
+pnpm web:dev
 pnpm cdk:synth:smoke && pnpm cdk:nag
 ```
 
@@ -27,6 +29,15 @@ curl -s http://127.0.0.1:8787/chat \
   -H 'content-type: application/json' \
   -d '{"sessionId":"demo","message":"What is the urgent care copay?","profile":"local"}' | jq
 ```
+
+Local web demo:
+
+```bash
+pnpm api-local
+pnpm web:dev
+```
+
+The Svelte demo console defaults to the `local` profile and uses the Vite dev proxy for `/chat`. Static preview or hosted builds must set `VITE_API_BASE_URL` to the API origin before making real requests.
 
 Optional Docker stack:
 
