@@ -24,10 +24,25 @@ describe('smoke deployment scripts', () => {
 
   it('does not print raw chat answers during smoke runs', () => {
     const smokeRun = readFileSync('scripts/aws-smoke-run.sh', 'utf8');
-    expect(smokeRun).toContain('answerHash');
-    expect(smokeRun).toContain('crypto.createHash');
+    const summarizer = readFileSync('scripts/summarize-smoke-response.ts', 'utf8');
+    expect(smokeRun).toContain('scripts/summarize-smoke-response.ts');
+    expect(summarizer).toContain('answerHash');
+    expect(summarizer).toContain('createHash');
     expect(smokeRun).toContain('x-smoke-api-key');
     expect(smokeRun).not.toContain('curl -s "${API_URL:?}/chat" -H');
+  });
+
+  it('can emit sanitized smoke evidence for manual demo capture', () => {
+    const smokeRun = readFileSync('scripts/aws-smoke-run.sh', 'utf8');
+    const evidence = readFileSync('scripts/smoke-evidence.ts', 'utf8');
+    expect(smokeRun).toContain('SMOKE_EVIDENCE_OUT');
+    expect(smokeRun).toContain('RESOURCE_SHAPE_JSON');
+    expect(evidence).toContain("mode: 'aws-smoke'");
+    expect(evidence).toContain("visualReview: 'summary-only'");
+    expect(evidence).toContain('accountHash');
+    expect(evidence).toContain('responseHashes');
+    expect(evidence).not.toContain('rawPrompt');
+    expect(evidence).not.toContain('rawAnswer');
   });
 
   it('uses the synthesized smoke event bus by default for eval triggers', () => {

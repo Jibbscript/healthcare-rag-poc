@@ -11,6 +11,7 @@ type VitestUserConfig = UserConfig & {
 };
 
 const config = {
+  base: process.env.GITHUB_PAGES === 'true' ? '/healthcare-rag-poc/' : '/',
   plugins: [svelte(), svelteTesting()],
   resolve: {
     alias: {

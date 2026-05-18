@@ -22,6 +22,8 @@
     "web:dev": "pnpm --filter @healthcare-rag/web dev",
     "web:build": "pnpm --filter @healthcare-rag/web build",
     "web:test": "pnpm --filter @healthcare-rag/web test",
+    "demo:capture": "tsx scripts/demo-capture.ts",
+    "demo:check-artifacts": "tsx scripts/check-demo-artifacts.ts",
     "build:lambda-artifacts": "bash scripts/build-lambda-artifacts.sh",
     "build:local-index": "tsx scripts/build-local-index.ts",
     "build:index-artifact": "tsx scripts/build-index-artifact.ts",
@@ -46,6 +48,7 @@
     "@types/node": "^22.15.19",
     "@types/pg": "^8.11.14",
     "esbuild": "^0.25.4",
+    "playwright": "^1.60.0",
     "typescript": "^5.8.3",
     "vitest": "^3.1.3"
   },

@@ -29,9 +29,10 @@ describe('view models', () => {
   });
 
   it('describes local and configured API state', () => {
-    expect(apiStatusText({ state: 'idle', profile: 'local', apiBaseUrl: '' })).toBe('Local fixture profile');
-    expect(apiStatusText({ state: 'idle', profile: 'aws-smoke', apiBaseUrl: '' })).toBe('AWS smoke target required');
-    expect(apiStatusText({ state: 'success', profile: 'local', apiBaseUrl: 'https://api.example.test' })).toBe('local API configured');
+    expect(apiStatusText({ state: 'idle', mode: 'fixture-demo', apiBaseUrl: '' })).toBe('Fixture playback ready');
+    expect(apiStatusText({ state: 'loading', mode: 'fixture-demo', apiBaseUrl: '' })).toBe('Fixture playback running');
+    expect(apiStatusText({ state: 'idle', mode: 'local-api', apiBaseUrl: '' })).toBe('Local API dev proxy');
+    expect(apiStatusText({ state: 'success', mode: 'local-api', apiBaseUrl: 'https://api.example.test' })).toBe('Local API configured');
   });
 
   it('formats errors and citations', () => {

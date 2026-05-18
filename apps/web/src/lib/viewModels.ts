@@ -1,5 +1,6 @@
 import type { ChatResponse } from '@healthcare-rag/core';
-import type { ChatClientError, DemoProfile } from './apiClient';
+import type { ChatClientError } from './apiClient';
+import type { DashboardMode } from './demoMode';
 
 export type RequestState = 'idle' | 'loading' | 'success' | 'refusal' | 'error';
 
@@ -7,11 +8,12 @@ export function requestStateForResponse(response: ChatResponse): RequestState {
   return response.refusal ? 'refusal' : 'success';
 }
 
-export function apiStatusText(input: { state: RequestState; profile: DemoProfile; apiBaseUrl: string }): string {
-  if (input.state === 'loading') return 'API request running';
+export function apiStatusText(input: { state: RequestState; mode: DashboardMode; apiBaseUrl: string }): string {
+  if (input.state === 'loading') return input.mode === 'fixture-demo' ? 'Fixture playback running' : 'API request running';
   if (input.state === 'error') return 'API attention needed';
-  if (input.apiBaseUrl.trim()) return `${input.profile} API configured`;
-  return input.profile === 'local' ? 'Local fixture profile' : 'AWS smoke target required';
+  if (input.mode === 'fixture-demo') return 'Fixture playback ready';
+  if (input.apiBaseUrl.trim()) return 'Local API configured';
+  return 'Local API dev proxy';
 }
 
 export function apiStatusTone(state: RequestState): 'neutral' | 'active' | 'success' | 'warning' {

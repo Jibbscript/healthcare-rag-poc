@@ -30,7 +30,7 @@ export const demoPrompts: DemoPrompt[] = [
     id: 'pii',
     label: 'PII',
     summary: 'Member id redaction behavior',
-    message: 'My member id ABC12345 asks what is the urgent care copay?'
+    message: 'My member id DEMO-MEMBER-ID asks what is the urgent care copay?'
   },
   {
     id: 'no-evidence',

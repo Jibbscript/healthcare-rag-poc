@@ -1,49 +1,38 @@
 <script lang="ts">
-  import type { DemoProfile } from '../lib/apiClient';
-  import { maskSecret } from '../lib/privacy';
+  import type { DashboardMode } from '../lib/demoMode';
+  import { dashboardModeLabel } from '../lib/demoMode';
 
   export let apiBaseUrl = '';
-  export let apiKey = '';
-  export let profile: DemoProfile = 'local';
+  export let mode: DashboardMode = 'fixture-demo';
   export let onApiBaseUrlChange: (value: string) => void = () => {};
-  export let onApiKeyChange: (value: string) => void = () => {};
-  export let onProfileChange: (value: DemoProfile) => void = () => {};
+  export let onModeChange: (value: DashboardMode) => void = () => {};
 
-  $: apiTarget = apiBaseUrl.trim() || 'dev proxy /chat';
+  $: apiTarget = mode === 'fixture-demo' ? 'bundled fixtures' : apiBaseUrl.trim() || 'dev proxy /chat';
 </script>
 
 <section class="settings-panel" aria-label="API settings">
   <details>
-    <summary>API settings</summary>
+    <summary>Demo target</summary>
     <form class="settings-grid" aria-label="API target configuration" on:submit|preventDefault>
       <label>
-        Profile
-        <select value={profile} on:change={(event) => onProfileChange((event.currentTarget as HTMLSelectElement).value as DemoProfile)}>
-          <option value="local">Local fixture</option>
-          <option value="aws-smoke">AWS smoke</option>
+        Mode
+        <select value={mode} on:change={(event) => onModeChange((event.currentTarget as HTMLSelectElement).value as DashboardMode)}>
+          <option value="fixture-demo">Fixture playback</option>
+          <option value="local-api">Local API</option>
         </select>
       </label>
 
-      <label>
-        API base URL
-        <input
-          value={apiBaseUrl}
-          placeholder="dev proxy /chat"
-          on:input={(event) => onApiBaseUrlChange((event.currentTarget as HTMLInputElement).value)}
-        />
-      </label>
-
-      <label>
-        Smoke API key
-        <input
-          value={apiKey}
-          type="password"
-          autocomplete="off"
-          placeholder="optional"
-          on:input={(event) => onApiKeyChange((event.currentTarget as HTMLInputElement).value)}
-        />
-      </label>
+      {#if mode === 'local-api'}
+        <label>
+          API base URL
+          <input
+            value={apiBaseUrl}
+            placeholder="dev proxy /chat"
+            on:input={(event) => onApiBaseUrlChange((event.currentTarget as HTMLInputElement).value)}
+          />
+        </label>
+      {/if}
     </form>
-    <p class="settings-note">Target: {apiTarget} · Key: {maskSecret(apiKey)}</p>
+    <p class="settings-note">Target: {apiTarget} · Mode: {dashboardModeLabel(mode)}</p>
   </details>
 </section>

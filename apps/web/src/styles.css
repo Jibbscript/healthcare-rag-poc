@@ -329,14 +329,34 @@ input[type="checkbox"] {
   background: var(--color-amber-soft);
 }
 
+.answer-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
 .answer-label {
   display: block;
-  margin-bottom: 8px;
   color: var(--color-muted);
   font-size: 11px;
   font-weight: 780;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.source-chip {
+  display: inline-flex;
+  flex: 0 0 auto;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #fff;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 760;
+  line-height: 1;
 }
 
 .answer-box p,

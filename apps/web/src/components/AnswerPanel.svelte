@@ -6,13 +6,14 @@
   export let response: ChatResponse | null = null;
   export let error: ChatClientError | null = null;
   export let loading = false;
+  export let sourceLabel = 'Fixture playback';
 </script>
 
 <section class="answer-panel" aria-live="polite">
   {#if loading}
     <div class="empty-state">
       <h2>Running retrieval</h2>
-      <p>The local fixture API is processing the active turn.</p>
+      <p>The selected demo target is processing the active turn.</p>
     </div>
   {:else if error}
     <div class="answer-box warning">
@@ -22,7 +23,10 @@
     </div>
   {:else if response}
     <div class:warning={response.refusal} class="answer-box">
-      <span class="answer-label">{response.refusal ? 'Refusal' : 'Answer'}</span>
+      <div class="answer-heading">
+        <span class="answer-label">{response.refusal ? 'Refusal' : 'Answer'}</span>
+        <span class="source-chip">{sourceLabel}</span>
+      </div>
       <p>{response.answer}</p>
       <small>{citationCountLabel(response)} · Trace: {response.traceId}</small>
     </div>

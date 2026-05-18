@@ -1,0 +1,225 @@
+name: Demo capture
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Capture fixture playback or sanitized aws-smoke evidence.
+        type: choice
+        required: true
+        default: fixture-demo
+        options:
+          - fixture-demo
+          - aws-smoke
+      base_url:
+        description: Dashboard URL to capture.
+        type: string
+        required: true
+        default: https://jibbscript.github.io/healthcare-rag-poc/
+      dry_run:
+        description: Keep aws-smoke in dry-run mode.
+        type: boolean
+        required: true
+        default: true
+      aws_region:
+        description: AWS region for real aws-smoke runs.
+        type: string
+        required: true
+        default: us-east-1
+      confirmation:
+        description: Type I_UNDERSTAND_THIS_CREATES_PAID_SMOKE_RESOURCES for a real aws-smoke run.
+        type: string
+        required: false
+        default: ''
+      stack_ownership_mode:
+        description: Whether automation owns deploy/teardown or targets an existing smoke stack.
+        type: choice
+        required: true
+        default: workflow-owned
+        options:
+          - workflow-owned
+          - externally-managed
+
+permissions:
+  contents: read
+
+concurrency:
+  group: demo-capture-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  fixture_capture:
+    name: Capture fixture dashboard
+    if: inputs.mode == 'fixture-demo'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      DEMO_BASE_URL: ${{ inputs.base_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Capture fixture dashboard
+        run: pnpm demo:capture -- --mode fixture-demo --base-url "${DEMO_BASE_URL}" --out demo-artifacts/fixture-demo
+
+      - name: Check artifact safety
+        run: pnpm demo:check-artifacts -- demo-artifacts
+
+      - name: Upload demo artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: healthcare-rag-demo-fixture-demo-${{ github.run_id }}
+          path: demo-artifacts
+          if-no-files-found: error
+          retention-days: 14
+
+  smoke_dry_run_capture:
+    name: Capture aws-smoke dry-run summary
+    if: inputs.mode == 'aws-smoke' && inputs.dry_run == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      DEMO_BASE_URL: ${{ inputs.base_url }}
+      AWS_REGION: ${{ inputs.aws_region }}
+      STACK_OWNERSHIP_MODE: ${{ inputs.stack_ownership_mode }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run dry-run smoke path
+        env:
+          DRY_RUN: 'true'
+          SMOKE_EVIDENCE_OUT: demo-artifacts/aws-smoke/smoke-evidence.json
+        run: scripts/aws-smoke-run.sh
+
+      - name: Capture aws-smoke summary
+        run: pnpm demo:capture -- --mode aws-smoke --base-url "${DEMO_BASE_URL}" --out demo-artifacts/aws-smoke --smoke-evidence demo-artifacts/aws-smoke/smoke-evidence.json
+
+      - name: Check artifact safety
+        run: pnpm demo:check-artifacts -- demo-artifacts
+
+      - name: Upload demo artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: healthcare-rag-demo-aws-smoke-dry-run-${{ github.run_id }}
+          path: demo-artifacts
+          if-no-files-found: error
+          retention-days: 14
+
+  smoke_real_capture:
+    name: Capture real aws-smoke summary
+    if: inputs.mode == 'aws-smoke' && inputs.dry_run == false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      DEMO_BASE_URL: ${{ inputs.base_url }}
+      AWS_REGION: ${{ inputs.aws_region }}
+      STACK_OWNERSHIP_MODE: ${{ inputs.stack_ownership_mode }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Validate smoke confirmation
+        run: |
+          if [[ "${{ inputs.confirmation }}" != "I_UNDERSTAND_THIS_CREATES_PAID_SMOKE_RESOURCES" ]]; then
+            echo "Real aws-smoke capture requires the typed paid-resource confirmation." >&2
+            exit 2
+          fi
+          if [[ -z "${{ secrets.AWS_SMOKE_ROLE_ARN }}" ]]; then
+            echo "Real aws-smoke capture requires AWS_SMOKE_ROLE_ARN." >&2
+            exit 2
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_SMOKE_ROLE_ARN }}
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Run smoke path
+        env:
+          DRY_RUN: 'false'
+          CONFIRM_AWS_SMOKE_RUN: ${{ inputs.confirmation }}
+          AWS_SMOKE_ARTIFACT_BUCKET: ${{ secrets.AWS_SMOKE_ARTIFACT_BUCKET }}
+          SMOKE_API_KEY: ${{ secrets.SMOKE_API_KEY }}
+          SMOKE_EVIDENCE_OUT: demo-artifacts/aws-smoke/smoke-evidence.json
+          SKIP_DEPLOY: ${{ inputs.stack_ownership_mode == 'externally-managed' }}
+          DESTROY_AFTER_RUN: true
+        run: scripts/aws-smoke-run.sh
+
+      - name: Capture aws-smoke summary
+        run: pnpm demo:capture -- --mode aws-smoke --base-url "${DEMO_BASE_URL}" --out demo-artifacts/aws-smoke --smoke-evidence demo-artifacts/aws-smoke/smoke-evidence.json
+
+      - name: Check artifact safety
+        run: pnpm demo:check-artifacts -- demo-artifacts
+
+      - name: Upload demo artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: healthcare-rag-demo-aws-smoke-${{ github.run_id }}
+          path: demo-artifacts
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Destroy workflow-owned smoke stack
+        if: always() && inputs.stack_ownership_mode == 'workflow-owned'
+        env:
+          CONFIRM_AWS_SMOKE_DESTROY: destroy-smoke
+        run: |
+          aws cloudformation describe-stacks --stack-name HealthcareRagAwsSmoke --region "${AWS_REGION}" >/dev/null 2>&1 || exit 0
+          scripts/destroy-smoke.sh || true

@@ -9,6 +9,7 @@ pnpm eval:local
 pnpm demo-local
 pnpm api-local
 pnpm web:dev
+GITHUB_PAGES=true pnpm web:build
 pnpm cdk:synth:smoke && pnpm cdk:nag
 ```
 
@@ -37,7 +38,15 @@ pnpm api-local
 pnpm web:dev
 ```
 
-The Svelte demo console defaults to the `local` profile and uses the Vite dev proxy for `/chat`. Static preview or hosted builds must set `VITE_API_BASE_URL` to the API origin before making real requests.
+The Svelte demo console defaults to fixture playback when no API base URL is configured. Hosted GitHub Pages builds use the static fixture path and do not call `/chat` or expose smoke API keys. Select `Local API` from `Demo target` when running `pnpm api-local` plus `pnpm web:dev`.
+
+Static Pages preview:
+
+```bash
+GITHUB_PAGES=true pnpm web:build
+pnpm --filter @healthcare-rag/web exec vite preview --host 127.0.0.1 --port 4173 --base /healthcare-rag-poc/
+pnpm demo:capture -- --mode fixture-demo --base-url http://127.0.0.1:4173/healthcare-rag-poc/ --out demo-artifacts/fixture-demo
+```
 
 Optional Docker stack:
 
@@ -54,20 +63,24 @@ make demo-local-reset
 ```bash
 pnpm cdk:synth:smoke
 pnpm cdk:nag
-scripts/deploy-smoke.sh --dry-run
+DRY_RUN=true scripts/aws-smoke-run.sh
 ```
 
-Real smoke deploys require a pre-existing artifact bucket plus a demo API key:
+Real smoke proof is run by `scripts/aws-smoke-run.sh` or the manual `Demo capture` GitHub Actions workflow, not from the hosted browser. Real smoke deploys require a pre-existing artifact bucket, a demo API key, region, and typed paid-resource confirmation:
 
 ```bash
+export AWS_REGION=us-east-1
 export AWS_SMOKE_ARTIFACT_BUCKET=<existing-artifact-bucket>
 export SMOKE_API_KEY=<shared-demo-key-at-least-16-chars>
+export CONFIRM_AWS_SMOKE_RUN=I_UNDERSTAND_THIS_CREATES_PAID_SMOKE_RESOURCES
+export DRY_RUN=false
 ```
 
 Destroy after any real smoke demo to avoid endpoint-hour charges:
 
 ```bash
-scripts/destroy-smoke.sh --dry-run
+export AWS_REGION=us-east-1
+CONFIRM_AWS_SMOKE_DESTROY=destroy-smoke scripts/destroy-smoke.sh
 ```
 
 ## Evidence map

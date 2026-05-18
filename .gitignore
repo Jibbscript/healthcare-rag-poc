@@ -5,6 +5,8 @@ apps/*/dist/
 cdk.out/
 evals/reports/*
 !evals/reports/.gitkeep
+demo-artifacts/
+test-results/
 .env
 .env.*
 !.env.example

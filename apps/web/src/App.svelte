@@ -7,7 +7,9 @@
   import QuestionComposer from './components/QuestionComposer.svelte';
   import SettingsPanel from './components/SettingsPanel.svelte';
   import TracePanel from './components/TracePanel.svelte';
-  import { ChatClientError, defaultSettings, sendChat, type DemoProfile, type RedactionMode } from './lib/apiClient';
+  import { ChatClientError, defaultSettings, sendChat, type RedactionMode } from './lib/apiClient';
+  import { defaultDashboardMode, dashboardModeLabel, type DashboardMode } from './lib/demoMode';
+  import { getDemoFixtureResponse } from './lib/demoFixtures';
   import { demoPrompts, type DemoPrompt } from './lib/demoPrompts';
   import { createEphemeralSessionId } from './lib/privacy';
   import { requestStateForResponse, type RequestState } from './lib/viewModels';
@@ -19,8 +21,7 @@
   let selectedCitationId = '';
   let message = selectedPrompt.message;
   let apiBaseUrl = configuredApiBase;
-  let apiKey = defaultSettings.apiKey;
-  let profile: DemoProfile = defaultSettings.profile;
+  let mode: DashboardMode = configuredApiBase ? 'local-api' : defaultDashboardMode;
   let redactionMode: RedactionMode = defaultSettings.redactionMode;
   let debug = defaultSettings.debug;
   let requestState: RequestState = 'idle';
@@ -46,17 +47,19 @@
     requestState = 'loading';
 
     try {
-      const result = await sendChat({
-        sessionId,
-        message: trimmed,
-        settings: {
-          apiBaseUrl,
-          apiKey,
-          profile,
-          redactionMode,
-          debug
-        }
-      });
+      const result = mode === 'fixture-demo'
+        ? getDemoFixtureResponse({ prompt: selectedPrompt, message: trimmed })
+        : await sendChat({
+            sessionId,
+            message: trimmed,
+            settings: {
+              apiBaseUrl,
+              apiKey: defaultSettings.apiKey,
+              profile: 'local',
+              redactionMode,
+              debug
+            }
+          });
       response = result;
       requestState = requestStateForResponse(result);
       selectedCitationId = result.citations[0]?.citationId ?? '';
@@ -68,12 +71,14 @@
     }
   }
 
-  function setProfile(nextProfile: DemoProfile) {
-    profile = nextProfile;
+  function setMode(nextMode: DashboardMode) {
+    mode = nextMode;
     response = null;
     error = null;
     requestState = 'idle';
   }
+
+  $: sourceLabel = dashboardModeLabel(mode);
 </script>
 
 <div class="app-frame">
@@ -82,11 +87,11 @@
       <div class="brand-mark" aria-hidden="true">R</div>
       <div>
         <h1>Healthcare RAG Demo Console</h1>
-        <p>Local fixture workflow · public benefits corpus</p>
+        <p>Fixture playback · public benefits corpus</p>
       </div>
     </div>
 
-    <ApiStatus state={requestState} {profile} {apiBaseUrl} />
+    <ApiStatus state={requestState} {mode} {apiBaseUrl} />
   </header>
 
   <main class="console-layout">
@@ -104,7 +109,7 @@
         onSubmit={submitQuestion}
       />
 
-      <AnswerPanel {response} {error} loading={requestState === 'loading'} />
+      <AnswerPanel {response} {error} loading={requestState === 'loading'} {sourceLabel} />
     </section>
 
     <aside class="evidence-panel" aria-label="Evidence and safety">
@@ -116,11 +121,9 @@
       />
       <SettingsPanel
         {apiBaseUrl}
-        {apiKey}
-        {profile}
+        {mode}
         onApiBaseUrlChange={(value) => (apiBaseUrl = value)}
-        onApiKeyChange={(value) => (apiKey = value)}
-        onProfileChange={setProfile}
+        onModeChange={setMode}
       />
     </aside>
   </main>
