@@ -6,6 +6,9 @@ cdk.out/
 evals/reports/*
 !evals/reports/.gitkeep
 demo-artifacts/
+demo-video/private/
+demo-video/public/evidence/
+demo-video/out/
 test-results/
 .env
 .env.*

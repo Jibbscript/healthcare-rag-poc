@@ -1,0 +1,29 @@
+{
+  "name": "@healthcare-rag/demo-video",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "collect": "tsx src/collect-evidence.ts",
+    "still": "tsx src/render.ts --still",
+    "render": "tsx src/render.ts",
+    "check": "tsx src/check-output.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@remotion/bundler": "4.0.462",
+    "@remotion/media": "4.0.462",
+    "@remotion/renderer": "4.0.462",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "remotion": "4.0.462",
+    "yaml": "^2.7.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "playwright": "^1.60.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}
