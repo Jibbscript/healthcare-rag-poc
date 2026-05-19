@@ -16,13 +16,23 @@ describe('LocalPresidioGuardrail', () => {
     });
   });
 
-  it('falls back to regex guardrails when analyzer is unavailable', async () => {
+  it('fails closed when a configured analyzer is unavailable', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     const guardrail = new LocalPresidioGuardrail({ analyzerUrl: 'http://presidio.local/' });
 
     await expect(guardrail.evaluateInput('member id ABC12345')).resolves.toMatchObject({
-      action: 'redact',
-      labels: expect.arrayContaining(['MEMBER_ID'])
+      action: 'block',
+      labels: expect.arrayContaining(['MEMBER_ID', 'PRESIDIO_UNAVAILABLE'])
+    });
+  });
+
+  it('fails closed on non-OK analyzer responses', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503 }));
+    const guardrail = new LocalPresidioGuardrail({ analyzerUrl: 'http://presidio.local/' });
+
+    await expect(guardrail.evaluateInput('is this covered?')).resolves.toMatchObject({
+      action: 'block',
+      labels: expect.arrayContaining(['PRESIDIO_UNAVAILABLE'])
     });
   });
 });

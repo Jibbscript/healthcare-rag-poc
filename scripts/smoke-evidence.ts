@@ -37,11 +37,12 @@ export async function writeSmokeEvidence(env: NodeJS.ProcessEnv = process.env): 
   const out = env.SMOKE_EVIDENCE_OUT;
   if (!out) return null;
 
-  const summary = parseJson<SmokeResponseSummary>(env.SMOKE_RESPONSE_SUMMARY_JSON, {});
+  const status = env.SMOKE_STATUS ?? 'unknown';
+  const summary = parseSmokeResponseSummary(status, env.SMOKE_RESPONSE_SUMMARY_JSON);
   const evidence: SmokeEvidence = {
     mode: 'aws-smoke',
     visualReview: 'summary-only',
-    status: env.SMOKE_STATUS ?? 'unknown',
+    status,
     generatedAt: new Date().toISOString(),
     provenance: {
       commitSha: env.GITHUB_SHA ?? readGitSha(),
@@ -52,10 +53,10 @@ export async function writeSmokeEvidence(env: NodeJS.ProcessEnv = process.env): 
       stackOwnershipMode: env.STACK_OWNERSHIP_MODE ?? 'workflow-owned',
       deployStatus: env.DEPLOY_STATUS ?? 'not-run',
       destroyStatus: env.DESTROY_STATUS ?? 'not-run',
-      smokeTemplateHash: hashFile(env.TEMPLATE_FILE ?? 'cdk.out/smoke/HealthcareRagAwsSmoke.template.json'),
-      smokeScriptHash: hashFile('scripts/aws-smoke-run.sh')
+      smokeTemplateHash: hashEvidenceFile('TEMPLATE_FILE', env.TEMPLATE_FILE ?? 'cdk.out/smoke/HealthcareRagAwsSmoke.template.json', status),
+      smokeScriptHash: hashEvidenceFile('scripts/aws-smoke-run.sh', 'scripts/aws-smoke-run.sh', status)
     },
-    resourceShape: parseJson(env.RESOURCE_SHAPE_JSON, { ok: false, unavailable: true }),
+    resourceShape: parseResourceShape(status, env.RESOURCE_SHAPE_JSON),
     traceIds: typeof summary.traceId === 'string' ? [summary.traceId] : [],
     responseHashes: typeof summary.answerHash === 'string' ? [summary.answerHash] : [],
     citationIds: Array.isArray(summary.citations)
@@ -68,17 +69,33 @@ export async function writeSmokeEvidence(env: NodeJS.ProcessEnv = process.env): 
   return out;
 }
 
-function parseJson<T>(text: string | undefined, fallback: T): T {
-  if (!text) return fallback;
+function parseResourceShape(status: string, text: string | undefined): unknown {
+  if (status === 'failed' && !text) return { ok: false, unavailable: true, reason: 'smoke-run-failed-before-cost-shape' };
+  return parseRequiredJson('RESOURCE_SHAPE_JSON', text);
+}
+
+function parseSmokeResponseSummary(status: string, text: string | undefined): SmokeResponseSummary {
+  if (!text && status !== 'passed') return {};
+  return parseRequiredJson('SMOKE_RESPONSE_SUMMARY_JSON', text);
+}
+
+function parseRequiredJson<T>(name: string, text: string | undefined): T {
+  if (!text) throw new Error(`${name} is required for smoke evidence`);
   try {
     return JSON.parse(text) as T;
   } catch {
-    return fallback;
+    throw new Error(`${name} must be valid JSON`);
   }
 }
 
 function hashText(value: string): string {
   return createHash('sha256').update(value).digest('hex');
+}
+
+function hashEvidenceFile(label: string, file: string, status: string): string {
+  const hash = hashFile(file);
+  if (hash !== 'unavailable' || status === 'failed') return hash;
+  throw new Error(`${label} is required for smoke evidence`);
 }
 
 function hashFile(file: string): string {

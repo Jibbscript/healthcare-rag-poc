@@ -43,23 +43,32 @@ export function synthTemplate(profile: InfraProfile, flags: InfraFlags): Templat
     EvalInvokePermission: { Type: 'AWS::Lambda::Permission', Properties: { Action: 'lambda:InvokeFunction', FunctionName: { Ref: 'EvalFunction' }, Principal: 'events.amazonaws.com', SourceArn: { 'Fn::GetAtt': ['EvalRequestedRule', 'Arn'] } } }
   };
   if (profile === 'aws-full') addFullResources(resources, flags, profile);
-  return { AWSTemplateFormatVersion: '2010-09-09', Description: `Healthcare RAG ${profile} stack. Cheap-by-default smoke excludes managed vector db, NAT, Fargate, Aurora, Bedrock KB, and multi-AZ endpoints.`, Parameters: parameters(), Resources: resources, Outputs: outputs(profile) };
+  return { AWSTemplateFormatVersion: '2010-09-09', Description: `Healthcare RAG ${profile} stack. Cheap-by-default smoke excludes managed vector db, NAT, Fargate, Aurora, Bedrock KB, and multi-AZ endpoints.`, Parameters: parameters(profile, flags), Resources: resources, Outputs: outputs(profile) };
 }
 
 function addFullResources(resources: Record<string, Resource>, flags: InfraFlags, profile: string): void {
   if (flags.enableOpenSearch) resources.ProdOpenSearchVectorCollection = { Type: 'AWS::OpenSearchServerless::Collection', Properties: withTags({ Name: 'healthcare-rag-vector', Type: 'VECTORSEARCH', Description: 'Disabled by default due fixed cost floor.' }, profile) };
   if (flags.enableAuroraPgvector) resources.ProdAuroraPgvectorCluster = { Type: 'AWS::RDS::DBCluster', Properties: withTags({ Engine: 'aurora-postgresql', EngineMode: 'provisioned', DatabaseName: 'benefits', ServerlessV2ScalingConfiguration: { MinCapacity: 0.5, MaxCapacity: 2 } }, profile) };
   if (flags.enableFargateReranker) resources.ProdFargateRerankerService = { Type: 'AWS::ECS::Service', Properties: withTags({ DesiredCount: 0, LaunchType: 'FARGATE' }, profile) };
-  if (flags.enableBedrockKb) resources.ProdBedrockKnowledgeBase = { Type: 'AWS::Bedrock::KnowledgeBase', Properties: { Name: 'healthcare-rag-kb-disabled-by-default', RoleArn: 'arn:aws:iam::123456789012:role/placeholder', KnowledgeBaseConfiguration: { Type: 'VECTOR', VectorKnowledgeBaseConfiguration: { EmbeddingModelArn: 'arn:aws:bedrock:us-east-1::foundation-model/placeholder' } }, StorageConfiguration: { Type: 'S3_VECTORS', S3VectorsConfiguration: { VectorBucketArn: 'arn:aws:s3:::placeholder' } } } };
+  if (flags.enableBedrockKb) resources.ProdBedrockKnowledgeBase = { Type: 'AWS::Bedrock::KnowledgeBase', Properties: { Name: 'healthcare-rag-kb-disabled-by-default', RoleArn: { Ref: 'BedrockKbRoleArn' }, KnowledgeBaseConfiguration: { Type: 'VECTOR', VectorKnowledgeBaseConfiguration: { EmbeddingModelArn: { Ref: 'BedrockKbEmbeddingModelArn' } } }, StorageConfiguration: { Type: 'S3_VECTORS', S3VectorsConfiguration: { VectorBucketArn: { Ref: 'BedrockKbVectorBucketArn' } } } } };
   if (flags.enableMultiAzEndpoints) resources.ProdSecondIsolatedSubnet = { Type: 'AWS::EC2::Subnet', Properties: withTags({ VpcId: { Ref: 'SmokeVpc' }, CidrBlock: '10.42.2.0/24', AvailabilityZone: { 'Fn::Select': [1, { 'Fn::GetAZs': '' }] }, MapPublicIpOnLaunch: false }, profile) };
 }
-function parameters(): Record<string, Parameter> {
-  return {
+function parameters(profile: InfraProfile, flags: InfraFlags): Record<string, Parameter> {
+  const base = {
     LambdaArtifactBucket: { Type: 'String', Description: 'Existing S3 bucket containing bundled smoke Lambda artifacts.' },
     ChatLambdaArtifactKey: { Type: 'String', Description: 'S3 key for the bundled chat handler zip.' },
     EvalLambdaArtifactKey: { Type: 'String', Description: 'S3 key for the bundled eval runner zip.' },
     SmokeApiKey: { Type: 'String', NoEcho: true, MinLength: 16, Description: 'Shared smoke-demo API key required by the API Gateway authorizer.' }
   };
+  if (profile === 'aws-full' && flags.enableBedrockKb) {
+    return {
+      ...base,
+      BedrockKbRoleArn: { Type: 'String', Description: 'IAM role ARN used by the explicitly enabled Bedrock Knowledge Base.' },
+      BedrockKbEmbeddingModelArn: { Type: 'String', Description: 'Embedding model ARN used by the explicitly enabled Bedrock Knowledge Base.' },
+      BedrockKbVectorBucketArn: { Type: 'String', Description: 'S3 vector bucket ARN used by the explicitly enabled Bedrock Knowledge Base.' }
+    };
+  }
+  return base;
 }
 function outputs(profile: string): Record<string, unknown> {
   return {

@@ -5,11 +5,17 @@ const files = walk(process.cwd()).filter((file) => /\.(ts|js|md|yaml|yml|json|sh
 let failures = [];
 for (const file of files) {
   const text = readFileSync(file, 'utf8');
-  if (/console\.log\([^)]*(prompt|answer|member id|ssn)/i.test(text)) failures.push(`${file}: possible raw prompt/answer/PII console logging`);
+  if (hasRawOutputSink(text)) failures.push(`${file}: possible raw prompt/answer/PII console or process output`);
   if (file.includes('packages/core/src') && /@aws-sdk|qdrant|from 'pg'|presidio|minio/i.test(text)) failures.push(`${file}: core imports vendor adapter dependency`);
 }
 if (failures.length) { console.error(failures.join('\n')); process.exit(1); }
 console.log(`lint passed (${files.length} files scanned)`);
+
+function hasRawOutputSink(text) {
+  return text.split(/\r?\n/).some((line) =>
+    /\b(?:console\.(?:log|info|warn|error)|process\.(?:stdout|stderr)\.write)\s*\([^)]*(?:rawPrompt|rawAnswer|requestBody|member id|ssn)/i.test(line)
+  );
+}
 
 function walk(dir) {
   return readdirSync(dir).flatMap((entry) => {

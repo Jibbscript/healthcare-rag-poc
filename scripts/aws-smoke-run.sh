@@ -41,7 +41,7 @@ pnpm cdk:synth:smoke
 pnpm cdk:nag
 pnpm build:index-artifact -- --out evals/reports/index-artifact.json.gz
 
-RESOURCE_SHAPE_JSON="$(pnpm --silent smoke:cost-shape 2>/dev/null || true)"
+RESOURCE_SHAPE_JSON="$(pnpm --silent smoke:cost-shape)"
 
 if [[ "${DRY_RUN}" == "true" ]]; then
   SMOKE_STATUS="dry-run"

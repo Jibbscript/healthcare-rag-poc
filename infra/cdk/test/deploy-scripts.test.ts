@@ -45,6 +45,12 @@ describe('smoke deployment scripts', () => {
     expect(evidence).not.toContain('rawAnswer');
   });
 
+  it('does not soften smoke cost-shape failures before evidence capture', () => {
+    const smokeRun = readFileSync('scripts/aws-smoke-run.sh', 'utf8');
+    expect(smokeRun).toContain('RESOURCE_SHAPE_JSON="$(pnpm --silent smoke:cost-shape)"');
+    expect(smokeRun).not.toContain('smoke:cost-shape 2>/dev/null || true');
+  });
+
   it('uses the synthesized smoke event bus by default for eval triggers', () => {
     const trigger = readFileSync('scripts/trigger-smoke-eval.ts', 'utf8');
     expect(trigger).toContain("env.EVENT_BUS_NAME ?? 'healthcare-rag-aws-smoke-events'");
