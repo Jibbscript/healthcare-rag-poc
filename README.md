@@ -1,6 +1,23 @@
 # Healthcare Benefits RAG POC
 
-Runnable commands first:
+Cheap-by-default healthcare benefits RAG proof of concept with a static public demo, local fixture/API proof, and an explicit AWS smoke path.
+
+This is a no-PHI demo. It uses public/fixture benefits text and fake PII examples only. It is HIPAA-hygienic in design but is not a compliance certification.
+
+## Visitor path
+
+1. **Open the hosted fixture demo.** Visit `https://jibbscript.github.io/healthcare-rag-poc/`. The GitHub Pages dashboard runs from bundled fixture playback. It shows cited answers, refusal states, trace labels, and redaction evidence without calling `/chat` or exposing smoke API keys.
+2. **Run the local API proof.** `pnpm demo-local` and `pnpm api-local` exercise the core RAG pipeline against deterministic fixture providers.
+3. **Inspect dry-run smoke evidence.** `DRY_RUN=true scripts/aws-smoke-run.sh` proves smoke template synthesis, cost-shape checks, index artifact build, and summary-only evidence generation without deploying AWS resources.
+4. **Run real AWS smoke only when needed.** Real smoke proof is an explicit, credentialed, paid-resource workflow with typed confirmation and teardown.
+
+Current status and evidence:
+
+- `docs/architecture/current-status.md` explains the current architecture truthfulness decisions, including sanitized `MODEL_ERROR`, fixture-vs-real smoke adapters, demo modes, and historical handoff boundaries.
+- `docs/runbooks/current-verification.md` records fresh verification results and explicit not-run gaps.
+- `docs/runbooks/aws-smoke.md` is the operator workflow for dry-run and real AWS smoke proof.
+
+## Runnable commands
 
 ```bash
 pnpm install --frozen-lockfile
@@ -18,8 +35,6 @@ pnpm cdk:synth:smoke && pnpm cdk:nag
 - `local`: OSS/self-hosted analogs (MinIO, DynamoDB Local, Postgres + pgvector, Qdrant, Ollama, Presidio) plus deterministic fixture providers for CI/offline runs.
 - `aws-smoke` (default): private, cheap AWS shape with S3, DynamoDB, Lambda, HTTP API, gateway endpoints, and exactly one Bedrock Runtime interface endpoint. It intentionally excludes NAT Gateway, OpenSearch, Aurora, Fargate, Bedrock Knowledge Bases, and multi-AZ endpoint expansion.
 - `aws-full`: explicit production extension matrix. Expensive constructs are disabled unless their feature flags are deliberately enabled.
-
-This is a no-PHI demo. It uses public/fixture benefits text and fake PII examples only. It is HIPAA-hygienic in design but is not a compliance certification.
 
 ## Local quickstart
 
@@ -93,4 +108,4 @@ CONFIRM_AWS_SMOKE_DESTROY=destroy-smoke scripts/destroy-smoke.sh
 - Evaluation cases and reports: `evals/`
 - Architecture dossier and runbooks: `docs/`
 
-See `docs/runbooks/final-verification.md` and `docs/key-tech-decisions.md` for the complete checklist and defense notes.
+See `docs/architecture/current-status.md`, `docs/runbooks/current-verification.md`, `docs/runbooks/final-verification.md`, and `docs/key-tech-decisions.md` for the current status, verification checklist, and defense notes. Historical implementation handoff notes remain in `docs/handoff/atomic-work-units-implementation.md`.

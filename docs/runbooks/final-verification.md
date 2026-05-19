@@ -1,5 +1,7 @@
 # Final verification checklist
 
+Current status for this checklist is recorded in `docs/runbooks/current-verification.md`.
+
 - [ ] `pnpm install --frozen-lockfile`
 - [ ] `pnpm lint`
 - [ ] `pnpm typecheck`
