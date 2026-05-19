@@ -8,4 +8,6 @@ tests:
   - vars: { input: "What is the urgent care copay?" }
     assert:
       - type: javascript
-        value: output.includes('passed') || output.includes('cases')
+        value: |
+          const summary = JSON.parse(output);
+          return summary.failed === 0 && summary.passed === summary.cases;

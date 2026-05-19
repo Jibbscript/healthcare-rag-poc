@@ -6,11 +6,23 @@ export class LocalPresidioGuardrail extends RegexGuardrail {
     if (!this.config?.analyzerUrl) return super.evaluateInput(text);
     try {
       const response = await fetch(`${this.config.analyzerUrl.replace(/\/$/, '')}/analyze`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, language: 'en' }) });
-      if (!response.ok) return super.evaluateInput(text);
+      if (!response.ok) return this.presidioUnavailable(text);
       const entities = await response.json() as Array<{ entity_type: string }>;
       const base = await super.evaluateInput(text);
       const labels = [...new Set([...base.labels, ...entities.map((e) => `PRESIDIO_${e.entity_type}`)])];
       return labels.length ? { ...base, action: base.action === 'allow' ? 'redact' : base.action, labels } : base;
-    } catch { return super.evaluateInput(text); }
+    } catch {
+      return this.presidioUnavailable(text);
+    }
+  }
+
+  private async presidioUnavailable(text: string): Promise<GuardrailDecision> {
+    const base = await super.evaluateInput(text);
+    return {
+      ...base,
+      action: 'block',
+      labels: [...new Set([...base.labels, 'PRESIDIO_UNAVAILABLE'])],
+      rationale: 'Configured Presidio analyzer unavailable; failing closed before answer generation.'
+    };
   }
 }

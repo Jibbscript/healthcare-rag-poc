@@ -17,7 +17,9 @@ export class MinioObjectStore implements ObjectStore {
     try {
       const out = await this.client.send(new GetObjectCommand({ Bucket: this.config.bucket, Key: key }));
       return Buffer.from(await out.Body!.transformToByteArray());
-    } catch (error) { throw normalizeError(error, 'not_found'); }
+    } catch (error) {
+      throw isNotFoundError(error) ? new CoreError('not_found', `Missing object ${key}`) : normalizeError(error, 'provider');
+    }
   }
   async list(prefix: string): Promise<ObjectInfo[]> {
     const out = await this.client.send(new ListObjectsV2Command({ Bucket: this.config.bucket, Prefix: prefix }));
@@ -27,7 +29,10 @@ export class MinioObjectStore implements ObjectStore {
     try {
       const out = await this.client.send(new HeadObjectCommand({ Bucket: this.config.bucket, Key: key }));
       return { key, size: out.ContentLength ?? 0, checksum: out.Metadata?.checksum };
-    } catch { return null; }
+    } catch (error) {
+      if (isNotFoundError(error)) return null;
+      throw normalizeError(error, 'provider');
+    }
   }
   async delete(key: string): Promise<void> { await this.client.send(new DeleteObjectCommand({ Bucket: this.config.bucket, Key: key })); }
   async bootstrap(): Promise<void> {
@@ -42,4 +47,10 @@ export class InMemoryObjectStore implements ObjectStore {
   async list(prefix: string): Promise<ObjectInfo[]> { return [...this.objects.entries()].filter(([key]) => key.startsWith(prefix)).map(([key, body]) => ({ key, size: body.length, checksum: sha256(body) })); }
   async head(key: string): Promise<ObjectInfo | null> { const value = this.objects.get(key); return value ? { key, size: value.length, checksum: sha256(value) } : null; }
   async delete(key: string): Promise<void> { this.objects.delete(key); }
+}
+
+function isNotFoundError(error: unknown): boolean {
+  const candidate = error as { name?: string; Code?: string; code?: string; $metadata?: { httpStatusCode?: number } };
+  const code = candidate.name ?? candidate.Code ?? candidate.code;
+  return candidate.$metadata?.httpStatusCode === 404 || code === 'NoSuchKey' || code === 'NotFound';
 }
